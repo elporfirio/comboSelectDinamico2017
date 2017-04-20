@@ -19,4 +19,4 @@ if (isset($_GET['estado'])) {
     $estados = $consultas->obtenerEstados();
 }
 
-echo json_encode($estados);
+echo json_encode($estados, JSON_UNESCAPED_UNICODE);

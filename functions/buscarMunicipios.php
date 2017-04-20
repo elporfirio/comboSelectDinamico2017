@@ -22,4 +22,4 @@ if (isset($_GET['estado'])) {
     $municipios = $consultas->obtenerMunicipios();
 }
 
-echo json_encode($municipios);
+echo json_encode($municipios, JSON_UNESCAPED_UNICODE);

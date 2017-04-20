@@ -23,4 +23,4 @@ if(isset($_GET['municipio'])){
 //    $localidades = $consultas->obtenerLocalidades();
 //}
 
-echo json_encode($localidades);
+echo json_encode($localidades, JSON_UNESCAPED_UNICODE);
