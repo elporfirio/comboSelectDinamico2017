@@ -7,7 +7,7 @@
  */
 ?>
 <!doctype html>
-<html lang="en">
+<html lang="es" ng-app="dinamicCombo">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport"
@@ -15,114 +15,131 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Document</title>
 </head>
-<body>
+<body ng-controller="LocationController as locationctrl">
 
 <form>
     <fieldset>
         <legend>Seleccione ubicación</legend>
         <label for="estado">Estado:</label>
-        <select name="estado" id="estado">
-            <option value="">- Seleccione un Estado -</option>
+        <select name="estado" id="estado" ng-model="locationctrl.estado"
+                ng-options="estado.clave_estado as estado.nombre for estado in locationctrl.estadosDisponibles"
+                ng-change="locationctrl.buscarMunicipios(locationctrl.estado)"
+                ng-disabled="locationctrl.cargando">
+            <option value="" selected disabled>- Seleccione un Estado -</option>
         </select>
         <br>
         <label for="municipio">Municipio:</label>
-        <select name="municipio" id="municipio">
-            <option value="">- primero seleccione un Estado -</option>
+        <select name="municipio" id="municipio" ng-model="locationctrl.municipio"
+                ng-options="municipio.clave_municipio as municipio.nombre for municipio in locationctrl.municipiosDisponibles"
+                ng-change="locationctrl.buscarLocalidades(locationctrl.municipio)"
+                ng-disabled="locationctrl.cargando">
+            <option value="" selected disabled>- primero seleccione un Estado -</option>
         </select>
         <br>
         <label for="localidad">Localidad:</label>
-        <select name="localidad" id="localidad">
-            <option value="">- primero seleccione un municipio -</option>
+        <select name="localidad" id="localidad" ng-model="locationctrl.localidad"
+                ng-options="localidad.clave_localidad as localidad.nombre for localidad in locationctrl.localidadesDisponibles"
+                ng-disabled="locationctrl.cargando">
+            <option value="" selected disabled>- primero seleccione un municipio -</option>
         </select>
     </fieldset>
     <hr>
-    <div class="log"></div>
+    <div class="log" ng-show="locationctrl.cargando">
+        Cargando...
+    </div>
 </form>
 
-<script
-        src="https://code.jquery.com/jquery-3.2.1.js"
-        integrity="sha256-DZAnKJ/6XZ9si04Hgrsxu/8s717jcIzLy3oi35EouyE="
-        crossorigin="anonymous"></script>
-
+<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.4/angular.min.js"></script>
 <script>
-    $('select').on('change', function () {
-        var current = $(this);
+    angular.module('dinamicCombo', [])
+        .service('LocationServices', ['$http', function ($http) {
+            var service = {
+                buscarEstados: buscarEstados,
+                buscarMunicipios: buscarMunicipios,
+                buscarLocalidades: buscarLocalidades
+            };
 
-        if (current.attr('id') === 'estado') {
-            buscarMunicipios(current.val());
-        } else if (current.attr('id') === 'municipio') {
-            buscarLocalidades(current.val());
-        }
-    });
+            return service;
 
-    $(document).ajaxStart(function () {
-        $('.log').text('Cargando...');
-        $('select').prop('disabled', true);
+            function buscarEstados() {
+                return $http.get('functions/buscarEstados.php')
+                    .then(buscarComplete)
+                    .catch(buscarError);
+            }
 
-    }).ajaxComplete(function () {
-        $('.log').text('');
-        $('select').prop('disabled', false);
-    });
+            function buscarMunicipios(estado) {
+                return $http({
+                    url: 'functions/buscarMunicipios.php',
+                    method: "GET",
+                    params: {estado: estado}
+                })
+                    .then(buscarComplete)
+                    .catch(buscarError);
+            }
 
-    buscarEstados();
+            function buscarLocalidades(municipio) {
+                return $http({
+                    url: 'functions/buscarLocalidades.php',
+                    method: "GET",
+                    params: {municipio: municipio}
+                })
+                    .then(buscarComplete)
+                    .catch(buscarError);
+            }
 
-    function buscarEstados() {
-        $.get('functions/buscarEstados.php')
-            .done(function (result) {
-                pintarOptions(
-                    'estado',
-                    $.parseJSON(result),
-                    '<option value="" selected disabled>-- Seleccione un Estado --</option>'
-                );
-            })
-            .fail(function (error) {
-                console.error(error);
-            });
-    }
+            function buscarComplete(response) {
+                return response.data;
+            }
 
-    function buscarMunicipios(estado) {
-        $.get('functions/buscarMunicipios.php', {estado: estado})
-            .done(function (result) {
-                pintarOptions(
-                    'municipio',
-                    $.parseJSON(result),
-                    '<option value="" selected disabled>-- Seleccione un Municipio --</option>'
-                );
-                pintarOptions(
-                    'localidad',
-                    [],
-                    '<option value="" selected disabled>- primero seleccione un municipio -</option>'
-                );
-            })
-            .fail(function (error) {
-                console.error(error);
-            });
-    }
+            function buscarError(error) {
+                console.log(error);
+            }
+        }])
+        .controller('LocationController', ['LocationServices', function (LocationServices) {
+            var self = this;
 
-    function buscarLocalidades(municipio) {
-        $.get('functions/buscarLocalidades.php', {municipio: municipio})
-            .done(function (result) {
-                pintarOptions(
-                    'localidad',
-                    $.parseJSON(result),
-                    '<option value="" selected disabled>-- Seleccione una Localidad --</option>'
-                );
-            })
-            .fail(function (error) {
-                console.error(error);
-            });
-    }
+            self.estadosDisponibles = [];
+            self.municipiosDisponibles = [];
+            self.localidadesDisponibles = [];
 
-    function pintarOptions(selectId, opciones, opcionDefault) {
-        var opcionesHtml = '';
-        if (typeof opcionDefault === 'string') {
-            opcionesHtml += opcionDefault;
-        }
-        $.each(opciones, function (ind, val) {
-            opcionesHtml += '<option value="' + val.id + '">' + val.nombre + '</option>'
-        });
-        $('#' + selectId).html(opcionesHtml);
-    }
+            self.estado = '';
+            self.municipio = '';
+            self.localidad = '';
+
+            self.cargando = false;
+
+            self.init = function () {
+                self.cargando = true;
+                LocationServices.buscarEstados()
+                    .then(function (result) {
+                        self.estadosDisponibles = result;
+                        self.cargando = false;
+                    })
+            };
+
+            self.buscarMunicipios = function (estado) {
+                self.municipio = '';
+                self.cargando = true;
+                LocationServices.buscarMunicipios(estado)
+                    .then(function (result) {
+                        self.municipiosDisponibles = result;
+                        self.localidadesDisponibles = [];
+                        self.cargando = false;
+                    })
+            };
+
+            self.buscarLocalidades = function (municipio) {
+                self.localidad = '';
+                self.cargando = true;
+                LocationServices.buscarLocalidades(municipio)
+                    .then(function (result) {
+                        self.localidadesDisponibles = result;
+                        self.cargando = false;
+                    })
+            };
+
+            self.init();
+        }]);
 </script>
 </body>
 </html>
